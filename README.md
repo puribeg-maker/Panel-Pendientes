@@ -1,6 +1,6 @@
 # Panel de trabajos
 
-Panel con una fila por trabajo: **Yo debo**, **Esperando de ellos** y **Bitácora**, más un radar arriba con lo vencido, lo que hay que insistir y los trabajos sin movimiento.
+Panel con una fila por trabajo: **Yo debo**, **Esperando de ellos** y **Hecho** (se llena solo al completar algo), más un radar arriba con lo vencido, lo que hay que insistir y los trabajos sin movimiento. El estado de cada trabajo (Al día / Atención / Atrasado) se calcula solo.
 
 ## Actualizar el panel en tu repo (una vez)
 
@@ -27,6 +27,7 @@ Mientras no hayas guardado la primera vez, el archivo no existe. Las demás cosa
 
 - **Agregar rápido** (barra de arriba): elige trabajo, tipo y escribe. Sirve para anotar sin buscar la fila.
 - En cada fila puedes agregar directo en cada lista (texto, persona y fecha opcionales).
-- Check = hecho / recibido. Doble clic edita un texto. ⚑ marca lo importante. ✕ borra.
+- Check = hecho / recibido: pasa solo a la columna **Hecho**. Desmarcarlo lo devuelve a pendiente. Doble clic edita un texto. ⚑ marca lo importante. ✕ borra.
+- 📌 fija un trabajo arriba (Megacentro viene fijado). **Ocultar los demás** muestra solo los fijados: úsalo antes de compartir pantalla.
 - Lo que pediste y lleva 5+ días sin llegar aparece en **Hay que insistir**.
 - Estado de cada trabajo: verde (al día), amarillo (atención), rojo (urgente).
