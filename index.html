@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="es-CL">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Panel de pendientes</title>
+<style>
+  :root {
+    --bg: #f6f5f1; --card: #ffffff; --ink: #1f2328; --muted: #6b7280; --line: #e5e3dc;
+    --verde: #2f855a; --amarillo: #c27c0e; --rojo: #c53030; --accent: #1f3a5f;
+    --verde-bg: #e6f4ec; --amarillo-bg: #fbf0d9; --rojo-bg: #fbe5e5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14161a; --card: #1d2026; --ink: #e8e9eb; --muted: #9aa0a9; --line: #2c3038;
+      --verde: #5bc08a; --amarillo: #e3a935; --rojo: #ef7a7a; --accent: #8fb4e6;
+      --verde-bg: #173126; --amarillo-bg: #3a2e12; --rojo-bg: #3b1d1d;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { max-width: 1200px; margin: 0 auto; padding: 28px 20px 8px;
+    display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; justify-content: space-between; }
+  h1 { margin: 0; font-size: 24px; letter-spacing: -.01em; }
+  .sub { color: var(--muted); font-size: 13px; margin-top: 2px; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn { border: 1px solid var(--line); background: var(--card); color: var(--ink); padding: 7px 12px;
+    border-radius: 8px; font: inherit; font-size: 13px; cursor: pointer; text-decoration: none; }
+  .btn:hover { border-color: var(--accent); }
+  .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  @media (prefers-color-scheme: dark) { .btn.primary { color: #14161a; } }
+  .kpis { max-width: 1200px; margin: 12px auto 4px; padding: 0 20px;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .kpi { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+  .kpi b { display: block; font-size: 26px; line-height: 1.1; }
+  .kpi span { color: var(--muted); font-size: 12px; }
+  .kpi.bad b { color: var(--rojo); }
+  .kpi.warn b { color: var(--amarillo); }
+  .filters { max-width: 1200px; margin: 14px auto 0; padding: 0 20px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip { border: 1px solid var(--line); background: transparent; color: var(--muted); padding: 4px 11px;
+    border-radius: 999px; font: inherit; font-size: 13px; cursor: pointer; }
+  .chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  @media (prefers-color-scheme: dark) { .chip.on { color: #14161a; } }
+  main { max-width: 1200px; margin: 0 auto; padding: 14px 20px 48px;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; align-items: start; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; border-top: 4px solid var(--line); }
+  .card.verde { border-top-color: var(--verde); }
+  .card.amarillo { border-top-color: var(--amarillo); }
+  .card.rojo { border-top-color: var(--rojo); }
+  .card h2 { margin: 0; font-size: 17px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .pill { font-size: 11px; font-weight: 600; padding: 2px 9px; border-radius: 999px; text-transform: uppercase; letter-spacing: .04em; }
+  .pill.verde { background: var(--verde-bg); color: var(--verde); }
+  .pill.amarillo { background: var(--amarillo-bg); color: var(--amarillo); }
+  .pill.rojo { background: var(--rojo-bg); color: var(--rojo); }
+  .next { margin: 12px 0 10px; padding: 9px 11px; border-radius: 9px; background: var(--bg); font-size: 14px; }
+  .next small { display: block; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 1px; }
+  .bar { height: 5px; border-radius: 3px; background: var(--line); overflow: hidden; margin: 4px 0 10px; }
+  .bar i { display: block; height: 100%; background: var(--verde); }
+  .meta { color: var(--muted); font-size: 12px; display: flex; justify-content: space-between; }
+  ul { list-style: none; padding: 0; margin: 0; }
+  li { display: flex; gap: 8px; align-items: baseline; padding: 6px 0; border-top: 1px solid var(--line); }
+  li:first-child { border-top: 0; }
+  li .t { flex: 1; }
+  li.done .t { color: var(--muted); text-decoration: line-through; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--line); align-self: center; }
+  .dot.alta { background: var(--rojo); } .dot.media { background: var(--amarillo); } .dot.baja { background: var(--verde); }
+  .date { font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .date.vencido { color: var(--rojo); font-weight: 600; }
+  .date.pronto { color: var(--amarillo); font-weight: 600; }
+  .nota { margin-top: 10px; font-size: 13px; color: var(--muted); font-style: italic; }
+  details { margin-top: 8px; } summary { cursor: pointer; color: var(--muted); font-size: 12px; }
+  .err { max-width: 700px; margin: 40px auto; padding: 0 20px; color: var(--rojo); }
+  footer { text-align: center; color: var(--muted); font-size: 12px; padding-bottom: 30px; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Panel de pendientes</h1>
+    <div class="sub" id="sub">Cargando…</div>
+  </div>
+  <div class="actions">
+    <button class="btn" id="reload">Recargar</button>
+    <a class="btn primary" id="edit" href="#" target="_blank" rel="noopener">Editar en GitHub</a>
+  </div>
+</header>
+<section class="kpis" id="kpis"></section>
+<section class="filters" id="filters"></section>
+<main id="board"></main>
+<footer>Se actualiza editando <code>pendientes.md</code> en el repositorio.</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  // Si la página vive en usuario.github.io/repo, arma solo el link de edición.
+  function editUrl() {
+    var h = location.hostname, p = location.pathname.split("/").filter(Boolean);
+    if (h.endsWith(".github.io") && p.length) {
+      return "https://github.com/" + h.split(".")[0] + "/" + p[0] + "/edit/main/pendientes.md";
+    }
+    return "https://github.com/";
+  }
+
+  var HOY = new Date(); HOY.setHours(0, 0, 0, 0);
+  var DIA = 86400000;
+
+  function parse(md) {
+    var trabajos = [], cur = null;
+    md = md.replace(/<!--[\s\S]*?-->/g, "");
+    md.split(/\r?\n/).forEach(function (raw) {
+      var line = raw.trim(), m;
+      if (!line) return;
+      if ((m = line.match(/^##\s+(.+)$/))) {
+        cur = { nombre: m[1].trim(), estado: "verde", proximo: "", nota: "", tareas: [] };
+        trabajos.push(cur); return;
+      }
+      if (!cur) return;
+      if ((m = line.match(/^estado\s*:\s*(.+)$/i))) {
+        var e = m[1].trim().toLowerCase();
+        cur.estado = /rojo/.test(e) ? "rojo" : /amar/.test(e) ? "amarillo" : "verde"; return;
+      }
+      if ((m = line.match(/^pr[oó]ximo(?:\s+paso)?\s*:\s*(.+)$/i))) { cur.proximo = m[1].trim(); return; }
+      if ((m = line.match(/^nota\s*:\s*(.+)$/i))) { cur.nota += (cur.nota ? " " : "") + m[1].trim(); return; }
+      if ((m = line.match(/^[-*]\s*\[( |x|X)\]\s*(.+)$/))) {
+        var partes = m[2].split("|").map(function (s) { return s.trim(); });
+        var t = { hecha: m[1].toLowerCase() === "x", texto: partes[0], fecha: null, prioridad: "" };
+        partes.slice(1).forEach(function (p) {
+          if (/^\d{4}-\d{2}-\d{2}$/.test(p)) t.fecha = new Date(p + "T00:00:00");
+          else if (/^(alta|media|baja)$/i.test(p)) t.prioridad = p.toLowerCase();
+        });
+        cur.tareas.push(t);
+      }
+    });
+    return trabajos;
+  }
+
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+
+  function fmtFecha(d) {
+    var dias = Math.round((d - HOY) / DIA);
+    var base = d.toLocaleDateString("es-CL", { day: "numeric", month: "short" });
+    if (dias < 0) return "venció " + base + " (" + Math.abs(dias) + " d)";
+    if (dias === 0) return "hoy";
+    if (dias === 1) return "mañana";
+    return base;
+  }
+  function claseFecha(d) {
+    var dias = Math.round((d - HOY) / DIA);
+    return dias < 0 ? "vencido" : dias <= 3 ? "pronto" : "";
+  }
+  var PESO = { alta: 0, media: 1, baja: 2, "": 3 };
+  function ordenar(a, b) {
+    if (a.fecha && b.fecha) return a.fecha - b.fecha;
+    if (a.fecha) return -1; if (b.fecha) return 1;
+    return PESO[a.prioridad] - PESO[b.prioridad];
+  }
+
+  function tarea(t) {
+    var li = el("li", t.hecha ? "done" : "");
+    li.appendChild(el("span", "dot " + t.prioridad));
+    li.appendChild(el("span", "t", t.texto));
+    if (t.fecha && !t.hecha) li.appendChild(el("span", "date " + claseFecha(t.fecha), fmtFecha(t.fecha)));
+    return li;
+  }
+
+  var filtro = "todos", datos = [];
+
+  function render() {
+    var board = document.getElementById("board");
+    board.textContent = "";
+    var abiertas = 0, vencidas = 0, semana = 0, rojos = 0;
+
+    datos.forEach(function (j) {
+      var pend = j.tareas.filter(function (t) { return !t.hecha; }).sort(ordenar);
+      var hechas = j.tareas.filter(function (t) { return t.hecha; });
+      abiertas += pend.length;
+      pend.forEach(function (t) {
+        if (!t.fecha) return;
+        var d = Math.round((t.fecha - HOY) / DIA);
+        if (d < 0) vencidas++; else if (d <= 7) semana++;
+      });
+      if (j.estado === "rojo") rojos++;
+      if (filtro !== "todos" && filtro !== j.nombre) return;
+
+      var card = el("article", "card " + j.estado);
+      var h = el("h2"); h.appendChild(el("span", "", j.nombre));
+      h.appendChild(el("span", "pill " + j.estado, j.estado === "verde" ? "al día" : j.estado === "amarillo" ? "atención" : "urgente"));
+      card.appendChild(h);
+
+      if (j.proximo) {
+        var n = el("div", "next"); n.appendChild(el("small", "", "Próximo paso")); n.appendChild(document.createTextNode(j.proximo));
+        card.appendChild(n);
+      }
+      var total = j.tareas.length, pct = total ? Math.round(hechas.length * 100 / total) : 0;
+      var bar = el("div", "bar"); var fill = el("i"); fill.style.width = pct + "%"; bar.appendChild(fill); card.appendChild(bar);
+      var meta = el("div", "meta"); meta.appendChild(el("span", "", pend.length + " pendiente" + (pend.length === 1 ? "" : "s")));
+      meta.appendChild(el("span", "", hechas.length + " de " + total + " hechas")); card.appendChild(meta);
+
+      var ul = el("ul"); pend.forEach(function (t) { ul.appendChild(tarea(t)); });
+      if (!pend.length) ul.appendChild(el("li", "", "Sin pendientes 🎉"));
+      card.appendChild(ul);
+
+      if (hechas.length) {
+        var det = el("details"); det.appendChild(el("summary", "", "Ver hechas (" + hechas.length + ")"));
+        var ul2 = el("ul"); hechas.forEach(function (t) { ul2.appendChild(tarea(t)); }); det.appendChild(ul2); card.appendChild(det);
+      }
+      if (j.nota) card.appendChild(el("div", "nota", j.nota));
+      board.appendChild(card);
+    });
+
+    var k = document.getElementById("kpis"); k.textContent = "";
+    [["Pendientes abiertos", abiertas, ""], ["Vencidos", vencidas, vencidas ? "bad" : ""],
+     ["Vencen en 7 días", semana, semana ? "warn" : ""], ["Trabajos en rojo", rojos, rojos ? "bad" : ""]]
+    .forEach(function (x) {
+      var d = el("div", "kpi " + x[2]); d.appendChild(el("b", "", String(x[1]))); d.appendChild(el("span", "", x[0])); k.appendChild(d);
+    });
+
+    var f = document.getElementById("filters"); f.textContent = "";
+    ["todos"].concat(datos.map(function (j) { return j.nombre; })).forEach(function (n) {
+      var b = el("button", "chip" + (n === filtro ? " on" : ""), n === "todos" ? "Todos" : n);
+      b.onclick = function () { filtro = n; render(); }; f.appendChild(b);
+    });
+  }
+
+  function cargar() {
+    document.getElementById("sub").textContent = "Cargando…";
+    fetch("pendientes.md?t=" + Date.now(), { cache: "no-store" })
+      .then(function (r) { if (!r.ok) throw new Error("No pude leer pendientes.md (" + r.status + ")"); return r.text(); })
+      .then(function (md) {
+        datos = parse(md);
+        if (filtro !== "todos" && !datos.some(function (j) { return j.nombre === filtro; })) filtro = "todos";
+        render();
+        document.getElementById("sub").textContent = "Hoy es " + HOY.toLocaleDateString("es-CL", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+      })
+      .catch(function (e) {
+        var m = el("div", "err", "Error: " + e.message + ". Si abriste el archivo directo desde el computador, sírvelo con un servidor local o publícalo en GitHub Pages.");
+        document.body.insertBefore(m, document.getElementById("kpis"));
+        document.getElementById("sub").textContent = "";
+      });
+  }
+
+  document.getElementById("edit").href = editUrl();
+  document.getElementById("reload").onclick = cargar;
+  cargar();
+})();
+</script>
+</body>
+</html>
