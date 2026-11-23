@@ -84,7 +84,7 @@
   .mini[data-act=flag]:hover { color:var(--amarillo) !important; }
   .editin { width:100%; border:1px solid var(--accent); background:var(--bg); border-radius:6px; padding:3px 6px; font:inherit; }
   .vacio { color:var(--muted); font-size:13px; font-style:italic; padding:6px 0 10px; }
-  .addf { display:flex; flex-wrap:wrap; gap:6px; margin-top:auto; padding-top:8px; border-top:1px dashed var(--line); }
+  .addf { display:flex; flex-wrap:wrap; align-items:flex-end; gap:6px; margin-top:auto; padding-top:8px; border-top:1px dashed var(--line); }
   .addf input[name=texto] { flex:1 1 100%; } .addf input[name=persona] { flex:1 1 90px; } .addf input[type=date] { flex:1 1 120px; }
   .addf button { border:1px solid var(--accent); background:var(--accent); color:var(--on-accent); border-radius:8px; padding:6px 12px; cursor:pointer; font-size:13px; }
   details.mas { margin:0 0 8px; } details.mas summary { cursor:pointer; color:var(--muted); font-size:12px; }
@@ -101,6 +101,12 @@
   .it.reg .tx { color:var(--ink); }
   dialog textarea { width:100%; font:11px/1.3 ui-monospace,Menlo,Consolas,monospace; background:var(--bg); color:var(--ink); border:1px solid var(--line); border-radius:8px; padding:6px 8px; }
   .row { flex-wrap:wrap; }
+  .dchip { cursor:pointer; border-radius:4px; } .dchip:hover { background:var(--bg); }
+  .dchip.sinf { font-style:italic; opacity:.8; }
+  .fechas { display:flex; flex-wrap:wrap; gap:8px; align-items:flex-end; margin-top:6px; background:var(--bg); border-radius:8px; padding:6px 8px; }
+  .fechas label, .addf label.dl, .quick label.ql { display:flex; flex-direction:column; gap:2px; font-size:11px; color:var(--muted); }
+  .fechas input, .addf label.dl input, .quick label.ql input { border:1px solid var(--line); background:var(--card); color:var(--ink); border-radius:6px; padding:4px 6px; font-size:13px; min-width:0; }
+  .addf label.dl { flex:1 1 125px; } .addf label.dl input { width:100%; flex:none; }
   .bottom { text-align:center; margin:4px 0 40px; }
   dialog { border:1px solid var(--line); border-radius:14px; background:var(--card); color:var(--ink); padding:22px 24px; width:min(460px,92vw); }
   dialog::backdrop { background:rgba(0,0,0,.45); }
@@ -145,6 +151,7 @@
         <li><b>Esperando de ellos</b>: lo que pediste y aún no llega. Al marcarlo como recibido también pasa a <b>Hecho</b>.</li>
         <li><b>Estado</b> (automático): <span style="color:var(--rojo)">Atrasado</span> si algo tuyo está vencido; <span style="color:var(--amarillo)">Atención</span> si algo tuyo vence hoy o mañana, o si algo de ellos viene atrasado; <span style="color:var(--verde)">Al día</span> en los demás casos.</li>
         <li>Lo que esperas está atrasado si prometieron una fecha y pasó, o si no hay fecha y llevan 5+ días sin responder (aparece en "Hay que insistir").</li>
+        <li><b>Fechas:</b> cada cosa guarda cuándo te la pidieron (o cuándo la pediste) y, si la hay, una segunda fecha: tu plazo o la que te prometieron. Si cambia o aparece después, haz clic en sus fechas (o en 📅) y edítalas.</li>
         <li>Doble clic sobre un texto para editarlo. ⚑ marca lo importante, ✕ lo borra. Desmarcar algo en <b>Hecho</b> lo devuelve a pendiente.</li>
         <li>📌 fija un trabajo arriba. "Ocultar los demás" muestra solo los fijados: úsalo antes de compartir pantalla.</li>
       </ul>
@@ -162,7 +169,8 @@
       </select>
       <input name="texto" placeholder="Ej: Le pedí las cartolas de los últimos 12 meses" required>
       <input name="persona" placeholder="Quién (opcional)" size="14">
-      <input name="fecha" type="date" title="Fecha límite (o fecha del hecho, en bitácora)">
+      <label class="ql"><span id="q-l1">Me lo pidieron el</span><input name="creado" type="date"></label>
+      <label class="ql" id="q-w2"><span id="q-l2">Plazo (opcional)</span><input name="fecha" type="date"></label>
       <button class="btn primary">Agregar</button>
     </form>
 
@@ -255,7 +263,7 @@
 
   /* ---------- Estado ---------- */
   var S = { data: null, key: null, salt: null, sha: null, exists: false, dirty: false, ver: 0, savedAt: null, copiado: false,
-            filtro: "todos", solo: (function () { try { return localStorage.getItem("panel.solo") === "1"; } catch (e) { return false; } })(), open: {}, cfg: loadCfg(), apiError: "" };
+            filtro: "todos", editF: null, solo: (function () { try { return localStorage.getItem("panel.solo") === "1"; } catch (e) { return false; } })(), open: {}, cfg: loadCfg(), apiError: "" };
 
   function loadCfg() {
     var c = {};
@@ -489,17 +497,27 @@
   }
 
   function itemHtml(tipo, x) {
-    var sub = "";
+    var deb = tipo === "debo", sub = "", tip = ' data-act="fechas" title="Clic para editar las fechas"';
     if (x.persona) sub += '<span class="who">' + esc(x.persona) + "</span>";
-    if (tipo === "debo") {
-      if (x.fecha) { var l = lblVence(x.fecha); sub += '<span class="' + l.c + '">' + l.t + "</span>"; }
+    sub += '<span class="dchip' + (!deb && !x.fecha && atrasadoDe(x) ? " stale" : "") + '"' + tip + ">" + (deb ? "me lo pidieron " : "pedido ") + hace(x.creado) + "</span>";
+    if (x.fecha) {
+      var d = dias(x.fecha), cls = d < 0 ? "vencido" : (deb && d <= 1) ? "pronto" : "", t;
+      if (deb) t = "plazo " + lblVence(x.fecha).t;
+      else t = "prometido " + (d < 0 ? fmtF(x.fecha) + " (atrasado " + (-d) + " d)" : d === 0 ? "hoy" : d === 1 ? "mañana" : fmtF(x.fecha));
+      sub += '<span class="dchip ' + cls + '"' + tip + ">" + t + "</span>";
     } else {
-      sub += '<span class="' + (!x.fecha && atrasadoDe(x) ? "stale" : "") + '">pedido ' + hace(x.creado) + "</span>";
-      if (x.fecha) { var l2 = lblVence(x.fecha); sub += '<span class="' + l2.c + '">prometido ' + (dias(x.fecha) < 0 ? fmtF(x.fecha) : l2.t) + "</span>"; }
+      sub += '<span class="dchip sinf"' + tip + ">" + (deb ? "sin plazo" : "sin fecha prometida") + "</span>";
+    }
+    var ed = "";
+    if (S.editF === x.id) {
+      ed = '<div class="fechas"><label>' + (deb ? "Me lo pidieron el" : "Lo pedí el") + '<input type="date" data-fdate="creado" value="' + esc(x.creado) + '"></label>' +
+        "<label>" + (deb ? "Plazo (opcional)" : "Prometido para (opcional)") + '<input type="date" data-fdate="fecha" value="' + esc(x.fecha) + '"></label>' +
+        '<button class="btn-sm" type="button" data-act="fechas-ok">Listo</button></div>';
     }
     return '<li class="it" data-id="' + x.id + '">' +
-      '<input type="checkbox" data-act="toggle" aria-label="' + (tipo === "debo" ? "Marcar como hecho" : "Marcar como recibido") + '">' +
-      '<div class="body"><span class="tx" data-act="edit" title="Doble clic para editar">' + esc(x.texto) + '</span><div class="sub">' + sub + "</div></div>" +
+      '<input type="checkbox" data-act="toggle" aria-label="' + (deb ? "Marcar como hecho" : "Marcar como recibido") + '">' +
+      '<div class="body"><span class="tx" data-act="edit" title="Doble clic para editar">' + esc(x.texto) + '</span><div class="sub">' + sub + "</div>" + ed + "</div>" +
+      '<button class="mini" data-act="fechas" title="Editar fechas">📅</button>' +
       '<button class="mini' + (x.alta ? " on" : "") + '" data-act="flag" title="Importante">⚑</button>' +
       '<button class="mini" data-act="del" title="Borrar">✕</button></li>';
   }
@@ -508,19 +526,22 @@
     return '<li class="it reg" data-id="' + x.id + '" data-src="' + tipo + '">' +
       '<input type="checkbox" data-act="toggle" checked aria-label="Reabrir (volver a pendiente)" title="Desmarcar para volver a pendiente">' +
       '<div class="body"><span class="tx" data-act="edit" title="Doble clic para editar">' + esc(x.texto) + '</span><div class="sub"><span>' + (tipo === "debo" ? "Hecho " : "Recibido ") + (x.hechaEl ? fmtF(x.hechaEl) : "") + "</span>" +
+      (x.creado && x.creado !== x.hechaEl ? "<span>pedido " + fmtF(x.creado) + "</span>" : "") +
       (x.persona ? '<span class="who">' + esc(x.persona) + "</span>" : "") + "</div></div>" +
       '<button class="mini" data-act="del" title="Borrar">✕</button></li>';
   }
 
   function colLista(j, tipo) {
     var T = tipo === "debo"
-      ? { tit: "Yo debo", hint: "Lo que tú tienes que mandar o responder", ph: "Ej: Enviar propuesta de fase 3", per: "A quién", fec: "Fecha límite", vacio: "Nada pendiente de tu lado. Si te piden algo, anótalo aquí." }
-      : { tit: "Esperando de ellos", hint: "Lo que pediste y aún no llega", ph: "Ej: Cartolas de los últimos 12 meses", per: "De quién", fec: "Fecha prometida (opcional)", vacio: "No esperas nada. Cuando pidas algo, anótalo para no perderle el hilo." };
+      ? { tit: "Yo debo", hint: "Lo que tú tienes que mandar o responder", ph: "Ej: Enviar propuesta de fase 3", per: "A quién", l1: "Me lo pidieron el", l2: "Plazo (opcional)", vacio: "Nada pendiente de tu lado. Si te piden algo, anótalo aquí." }
+      : { tit: "Esperando de ellos", hint: "Lo que pediste y aún no llega", ph: "Ej: Cartolas de los últimos 12 meses", per: "De quién", l1: "Lo pedí el", l2: "Prometido para (opcional)", vacio: "No esperas nada. Cuando pidas algo, anótalo para no perderle el hilo." };
     var pend = j[tipo].filter(function (x) { return !x.hecha; }).sort(tipo === "debo" ? ordDebo : ordEspero);
     return '<div class="col" data-list="' + tipo + '"><h3>' + T.tit + ' <span class="count">' + pend.length + "</span></h3><div class=\"hint\">" + T.hint + "</div>" +
       (pend.length ? "<ul>" + pend.map(function (x) { return itemHtml(tipo, x); }).join("") + "</ul>" : '<div class="vacio">' + T.vacio + "</div>") +
       '<form class="addf" data-act="add" autocomplete="off"><input name="texto" placeholder="' + T.ph + '" required>' +
-      '<input name="persona" placeholder="' + T.per + '"><input name="fecha" type="date" title="' + T.fec + '"><button>＋</button></form></div>';
+      '<input name="persona" placeholder="' + T.per + '">' +
+      '<label class="dl">' + T.l1 + '<input name="creado" type="date" value="' + HOY_ISO + '"></label>' +
+      '<label class="dl">' + T.l2 + '<input name="fecha" type="date"></label><button>＋</button></form></div>';
   }
 
   function colRegistro(j) {
@@ -533,7 +554,7 @@
     return '<div class="col" data-list="registro"><h3>Hecho <span class="count">' + h.length + '</span></h3><div class="hint">Se llena solo cuando marcas algo como completo</div>' +
       (h.length ? "<ul>" + h.slice(0, 6).map(li).join("") + "</ul>" : '<div class="vacio">Aquí queda el registro de lo que vayas completando.</div>') +
       (h.length > 6 ? '<details class="mas" data-k="' + k + '"' + (S.open[k] ? " open" : "") + "><summary>Más antiguos (" + (h.length - 6) + ")</summary><ul>" + h.slice(6).map(li).join("") + "</ul></details>" : "") +
-      '<form class="addf" data-act="add" autocomplete="off"><input name="texto" placeholder="Algo que ya hiciste y no estaba anotado" required><input name="fecha" type="date" value="' + HOY_ISO + '" title="Fecha en que lo hiciste"><button>＋</button></form></div>';
+      '<form class="addf" data-act="add" autocomplete="off"><input name="texto" placeholder="Algo que ya hiciste y no estaba anotado" required><label class="dl">Lo hice el<input name="creado" type="date" value="' + HOY_ISO + '"></label><button>＋</button></form></div>';
   }
 
   function filaTrabajo(j) {
@@ -558,8 +579,8 @@
   /* ---------- Acciones ---------- */
   function agregar(jid, tipo, d) {
     var j = job(jid); if (!j || !d.texto) return;
-    if (tipo === "nota") j.debo.push({ id: uid(), texto: d.texto, persona: d.persona || "", fecha: "", creado: d.fecha || HOY_ISO, alta: false, hecha: true, hechaEl: d.fecha || HOY_ISO });
-    else j[tipo].push({ id: uid(), texto: d.texto, persona: d.persona || "", fecha: d.fecha || "", creado: HOY_ISO, alta: false, hecha: false, hechaEl: "" });
+    if (tipo === "nota") j.debo.push({ id: uid(), texto: d.texto, persona: d.persona || "", fecha: "", creado: d.creado || HOY_ISO, alta: false, hecha: true, hechaEl: d.creado || HOY_ISO });
+    else j[tipo].push({ id: uid(), texto: d.texto, persona: d.persona || "", fecha: d.fecha || "", creado: d.creado || HOY_ISO, alta: false, hecha: false, hechaEl: "" });
     tocar(j);
   }
   function itemDe(el) {
@@ -580,6 +601,10 @@
       return;
     }
     if (act === "pin") { var jp = job(a.closest("[data-job]").getAttribute("data-job")); jp.fijado = !jp.fijado; tocar(jp); render(); return; }
+    if (act === "fechas" || act === "fechas-ok") {
+      var itf = itemDe(a); if (!itf) return;
+      S.editF = (act === "fechas" && S.editF !== itf.x.id) ? itf.x.id : null; render(); return;
+    }
     var it = itemDe(a); if (!it) return;
     if (act === "toggle") { it.x.hecha = !it.x.hecha; it.x.hechaEl = it.x.hecha ? HOY_ISO : ""; tocar(it.j); render(); }
     else if (act === "flag") { it.x.alta = !it.x.alta; tocar(it.j); render(); }
@@ -599,11 +624,17 @@
     var f = e.target.closest("form[data-act=add]"); if (!f) return;
     e.preventDefault();
     var jid = f.closest("[data-job]").getAttribute("data-job"), tipo = f.closest("[data-list]").getAttribute("data-list");
-    agregar(jid, tipo === "registro" ? "nota" : tipo, { texto: f.texto.value.trim(), persona: f.persona ? f.persona.value.trim() : "", fecha: f.fecha.value });
+    agregar(jid, tipo === "registro" ? "nota" : tipo, { texto: f.texto.value.trim(), persona: f.persona ? f.persona.value.trim() : "", fecha: f.fecha ? f.fecha.value : "", creado: f.creado ? f.creado.value : "" });
     render();
     var again = document.querySelector('[data-job="' + jid + '"] [data-list="' + tipo + '"] input[name=texto]'); if (again) again.focus();
   });
   board.addEventListener("change", function (e) {
+    var fd = e.target.getAttribute && e.target.getAttribute("data-fdate");
+    if (fd) {
+      var itd = itemDe(e.target); if (!itd) return;
+      if (fd === "creado" && !e.target.value) { render(); return; }
+      itd.x[fd] = e.target.value; tocar(itd.j); render(); return;
+    }
     var f = e.target.getAttribute && e.target.getAttribute("data-field"); if (!f) return;
     var j = job(e.target.closest("[data-job]").getAttribute("data-job")), v = e.target.value.trim();
     if (f === "nombre" && !v) { e.target.value = j.nombre; return; }
@@ -622,8 +653,8 @@
 
   $("#quick").addEventListener("submit", function (e) {
     e.preventDefault(); var f = e.target;
-    agregar(f.job.value, f.tipo.value, { texto: f.texto.value.trim(), persona: f.persona.value.trim(), fecha: f.fecha.value });
-    f.texto.value = ""; f.persona.value = ""; f.fecha.value = "";
+    agregar(f.job.value, f.tipo.value, { texto: f.texto.value.trim(), persona: f.persona.value.trim(), fecha: f.fecha.value, creado: f.creado.value });
+    f.texto.value = ""; f.persona.value = ""; f.fecha.value = ""; f.creado.value = HOY_ISO;
     render(); f.texto.focus(); toast("Anotado");
   });
   $("#job-form").addEventListener("submit", function (e) {
@@ -641,6 +672,14 @@
   $("#man-abrir").onclick = async function () { await copiarManual(); window.open(urlManual(), "_blank", "noopener"); };
   $("#man-cerrar").onclick = function () { $("#dlg-manual").close(); };
   $("#man-token").onclick = function () { $("#dlg-manual").close(); abrirAjustes(); };
+  function etiquetasQuick() {
+    var t = $("#quick select[name=tipo]").value;
+    $("#q-l1").textContent = t === "debo" ? "Me lo pidieron el" : t === "espero" ? "Lo pedí el" : "Lo hice el";
+    $("#q-l2").textContent = t === "debo" ? "Plazo (opcional)" : "Prometido para (opcional)";
+    $("#q-w2").hidden = t === "nota";
+  }
+  $("#quick select[name=tipo]").addEventListener("change", etiquetasQuick);
+  $("#quick input[name=creado]").value = HOY_ISO; etiquetasQuick();
   $("#btn-ayuda").onclick = function () { var d = $("#ayuda"); d.open = !d.open; if (d.open) d.scrollIntoView({ behavior: "smooth" }); };
 
   /* ---------- Ajustes ---------- */
