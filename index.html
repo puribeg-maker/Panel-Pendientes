@@ -183,7 +183,7 @@
     </div>
     <label><input type="checkbox" id="gate-rem"> Recordar en este equipo</label>
     <div class="msg" id="gate-msg"></div>
-    <div class="row"><button class="btn" type="button" id="gate-ajustes">Ajustes</button><button class="btn primary" id="gate-ok">Entrar</button></div>
+    <div class="row"><button class="btn" type="button" id="gate-reset" hidden>Olvidé la contraseña</button><button class="btn" type="button" id="gate-ajustes">Ajustes</button><button class="btn primary" id="gate-ok">Entrar</button></div>
   </form>
 </dialog>
 
@@ -655,6 +655,7 @@
     $("#gate-text").textContent = crear
       ? "Tus datos se cifran en tu navegador antes de subirse. El repositorio es público, pero el archivo solo se puede leer con esta contraseña. Si la pierdes, no hay forma de recuperarlos."
       : "Escribe tu contraseña para abrir el panel.";
+    $("#gate-reset").hidden = crear;
     $("#gate-conf-wrap").hidden = !crear; $("#gate-pwd2").required = crear;
     $("#gate-pwd").autocomplete = crear ? "new-password" : "current-password";
     $("#gate-ok").textContent = crear ? "Crear y entrar" : "Entrar";
@@ -663,6 +664,11 @@
     if (!$("#gate").open) $("#gate").showModal();
     $("#gate-pwd").focus();
   }
+  $("#gate-reset").onclick = function () {
+    if (!confirm("Esto descarta lo que hay guardado y empieza de cero con una contraseña nueva. Los datos actuales NO se pueden recuperar. ¿Continuar?")) return;
+    try { localStorage.removeItem("panel.pwd"); } catch (e) {}
+    gate("crear");
+  };
   $("#gate").addEventListener("cancel", function (e) { e.preventDefault(); });
   $("#gate-form").addEventListener("submit", async function (e) {
     e.preventDefault();
@@ -677,7 +683,11 @@
         msg.textContent = "Abriendo…";
         S.data = await descifrar(S._texto, pwd);
       }
-    } catch (err) { msg.textContent = "Contraseña incorrecta."; return; }
+    } catch (err) {
+      msg.textContent = (err && err.name === "OperationError") ? "Contraseña incorrecta."
+        : "No pude leer el archivo guardado: parece dañado o incompleto (puede que no sea la contraseña). Si no tienes datos que perder, usa «Olvidé la contraseña» para empezar de cero.";
+      return;
+    }
     try { if ($("#gate-rem").checked) localStorage.setItem("panel.pwd", pwd); } catch (e3) {}
     $("#gate").close(); iniciar();
   });
