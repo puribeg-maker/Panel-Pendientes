@@ -1,30 +1,32 @@
-# Panel de pendientes
+# Panel de trabajos
 
-Panel visual de pendientes y próximos pasos por trabajo. Es un sitio estático: `index.html` lee `pendientes.md` y lo dibuja.
+Panel con una fila por trabajo: **Yo debo**, **Esperando de ellos** y **Bitácora**, más un radar arriba con lo vencido, lo que hay que insistir y los trabajos sin movimiento.
 
-## Publicar (una sola vez)
+## Actualizar el panel en tu repo (una vez)
 
-1. Crea un repositorio nuevo en GitHub (por ejemplo `panel`) y sube estos tres archivos: `index.html`, `pendientes.md` y `README.md`.
-2. En el repo: **Settings → Pages → Build and deployment → Source: Deploy from a branch → Branch: `main` / `(root)` → Save**.
-3. A los 1–2 minutos queda en `https://TU-USUARIO.github.io/NOMBRE-DEL-REPO/`.
+1. En el repo, reemplaza `index.html` por el nuevo (Add file → Upload files, o abre `index.html` → lápiz → pega el contenido).
+2. Borra `pendientes.md`: ya no se usa.
+3. Abre la página (`https://TU-USUARIO.github.io/Panel-Pendientes/`). La primera vez te pide **crear una contraseña**. Anótala: si se pierde, los datos no se pueden recuperar.
 
-## Actualizar
+## Que guarde solo (recomendado)
 
-Abre `pendientes.md` en GitHub, toca el lápiz (Edit), cambia lo que necesites y presiona **Commit changes**. El sitio se actualiza solo en un minuto aprox. El botón "Editar en GitHub" del panel te lleva directo al archivo.
+Sin esto, "Guardar" copia el contenido cifrado y te abre GitHub para que lo pegues. Con esto, guarda directo a los 2–3 segundos de cada cambio.
 
-Formato:
+1. En GitHub: Settings (de tu cuenta) → Developer settings → Personal access tokens → **Fine-grained tokens** → Generate new token.
+2. Repository access: **Only select repositories** → `Panel-Pendientes`.
+3. Permissions → Repository permissions → **Contents: Read and write**.
+4. Copia el token y pégalo en el panel: **Ajustes → Token**. Queda guardado solo en ese navegador.
 
-```
-## Nombre del trabajo
-estado: verde | amarillo | rojo
-proximo: el siguiente paso concreto
-nota: comentario opcional
-- [ ] Pendiente | 2026-12-01 | alta
-- [x] Cosa ya hecha
-```
+## Privacidad
 
-La fecha y la prioridad (alta, media, baja) son opcionales. Para agregar un trabajo nuevo, copia un bloque `## ...` completo.
+El repo es público, pero `datos.enc.json` está cifrado (AES-256-GCM, clave derivada de tu contraseña con PBKDF2 en tu navegador). En GitHub solo se ve texto ilegible. La contraseña y el token nunca salen de tu navegador, salvo el token hacia la API de GitHub para guardar.
 
-## Ojo con la privacidad
+Mientras no hayas guardado la primera vez, el archivo no existe. Las demás cosas del repo (`index.html`, este README) no contienen datos tuyos.
 
-GitHub Pages publica el sitio en una URL abierta a cualquiera que la tenga, aunque el repo sea privado. Por eso conviene escribir los pendientes sin datos sensibles de clientes (montos, nombres completos de pacientes, etc.), o usar el panel solo con lo que no te importaría que alguien viera.
+## Uso diario
+
+- **Agregar rápido** (barra de arriba): elige trabajo, tipo y escribe. Sirve para anotar sin buscar la fila.
+- En cada fila puedes agregar directo en cada lista (texto, persona y fecha opcionales).
+- Check = hecho / recibido. Doble clic edita un texto. ⚑ marca lo importante. ✕ borra.
+- Lo que pediste y lleva 5+ días sin llegar aparece en **Hay que insistir**.
+- Estado de cada trabajo: verde (al día), amarillo (atención), rojo (urgente).
