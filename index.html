@@ -351,18 +351,40 @@
     return u;
   }
 
+  function norm(t) { return t == null ? "" : String(t).trim(); }
+  async function refrescarSha() {
+    var r = await fetch(apiUrl() + "?ref=" + encodeURIComponent(S.cfg.branch) + "&t=" + Date.now(), { headers: hdr(), cache: "no-store" });
+    if (r.status === 404) { S.sha = null; S.exists = false; return null; }
+    if (!r.ok) throw new Error("GitHub respondió " + r.status + " al revisar el archivo. Revisa el token en Ajustes.");
+    var j = await r.json(); S.sha = j.sha; S.exists = true;
+    var t = atob((j.content || "").replace(/\s/g, ""));
+    return t.trim() ? t : null;
+  }
+
   var saving = false, again = false, timer = null;
   async function guardar() {
     if (!S.key || !S.data) return;
     var v = S.ver, texto = await cifrar();
     if (tokenOk()) {
-      var body = { message: "Actualiza panel", content: btoa(texto), branch: S.cfg.branch };
-      if (S.sha) body.sha = S.sha;
       var h = hdr(); h["Content-Type"] = "application/json";
-      var r = await fetch(apiUrl(), { method: "PUT", headers: h, body: JSON.stringify(body) });
-      if (r.status === 409 || r.status === 422) throw new Error("El archivo cambió en GitHub desde que lo abriste (¿otro equipo?). Recarga la página y vuelve a anotar lo último.");
-      if (!r.ok) throw new Error("GitHub respondió " + r.status + " al guardar. Revisa el token y sus permisos en Ajustes.");
-      var j = await r.json(); S.sha = j.content.sha; S.exists = true;
+      var poner = function () {
+        var body = { message: "Actualiza panel", content: btoa(texto), branch: S.cfg.branch };
+        if (S.sha) body.sha = S.sha;
+        return fetch(apiUrl(), { method: "PUT", headers: h, body: JSON.stringify(body) });
+      };
+      var r = await poner();
+      if (r.status === 409 || r.status === 422) {
+        // Falta la versión actual del archivo (p. ej. el panel se abrió antes de poner el token) o cambió en GitHub.
+        var remoto = await refrescarSha();
+        if (norm(remoto) !== norm(S.base) && !confirm("El archivo en GitHub es distinto del que abriste (¿lo cambiaste desde otro equipo o a mano?).\n\n¿Sobrescribirlo con lo que tienes en pantalla?")) {
+          throw new Error("No guardé: el archivo en GitHub cambió. Recarga la página para ver la última versión.");
+        }
+        r = await poner();
+      }
+      if (r.status === 409 || r.status === 422) throw new Error("GitHub rechazó el guardado por un conflicto. Recarga la página e inténtalo de nuevo.");
+      if (r.status === 403 || r.status === 401) throw new Error("GitHub respondió " + r.status + " al guardar: el token no tiene permiso de escritura en este repositorio (Contents: Read and write).");
+      if (!r.ok) throw new Error("GitHub respondió " + r.status + " al guardar. Revisa el token en Ajustes.");
+      var j = await r.json(); S.sha = j.content.sha; S.exists = true; S.base = texto;
       if (S.ver === v) S.dirty = false;
       S.savedAt = new Date(); S.copiado = false;
       toast("Guardado en GitHub");
@@ -705,6 +727,7 @@
     $("#fatal").hidden = true;
     var texto;
     try { texto = await leerRemoto(); } catch (e) { $("#fatal").hidden = false; $("#fatal").textContent = "Error: " + e.message + ". Si abriste el archivo directo desde el computador, sírvelo con un servidor local o publícalo en GitHub Pages."; return; }
+    S.base = texto;
     if (texto === null) { gate("crear"); return; }
     S._texto = texto;
     var pwd = null; try { pwd = localStorage.getItem("panel.pwd"); } catch (e) {}
